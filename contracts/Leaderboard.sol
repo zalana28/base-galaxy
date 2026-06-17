@@ -11,14 +11,36 @@ contract Leaderboard {
         uint64  timestamp;
     }
 
+    address public owner;
+
     /// @notice Best score per player.
     mapping(address => uint256) public bestScore;
+
+    /// @notice Last time a player entered a game session.
+    mapping(address => uint64) public lastEntered;
 
     /// @notice Last 100 submissions, newest first (ring buffer).
     Entry[100] public recent;
     uint8 public head;
 
+    event GameEntered(address indexed player, uint64 timestamp);
     event ScoreSubmitted(address indexed player, uint256 score, uint64 timestamp, bool newPersonalBest);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    /// @notice Record that a player has entered a game session.
+    ///         No entry fee — player pays only gas.
+    function enterGame() external {
+        lastEntered[msg.sender] = uint64(block.timestamp);
+        emit GameEntered(msg.sender, block.timestamp);
+    }
 
     /// @notice Submit a score. Only updates the player's best if higher.
     function submitScore(uint256 score) external {
