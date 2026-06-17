@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
-import { LEADERBOARD_ADDRESS } from '../config/wagmi.js';
+import { LEADERBOARD_ADDRESS, DATA_SUFFIX } from '../config/wagmi.js';
 import { base } from '../config/chain.js';
 import LEADERBOARD_ABI from '../abi/Leaderboard.json';
 import { useMiniApp } from '../hooks/useMiniApp.js';
@@ -14,7 +14,7 @@ export default function GameOverOverlay({ score = 0, wave = 1, onPlayAgain, onQu
   const { address } = useAccount();
   const { composeCast } = useMiniApp();
 
-  // Submit score onchain
+  // Submit score onchain via writeContract (dataSuffix = builder code appended to calldata)
   const {
     writeContract: submitScore,
     data: txHash,
@@ -35,6 +35,8 @@ export default function GameOverOverlay({ score = 0, wave = 1, onPlayAgain, onQu
       functionName: 'submitScore',
       args: [BigInt(score)],
       chainId: base.id,
+      // Append ERC-8021 builder code suffix so Base indexer attributes this tx
+      dataSuffix: DATA_SUFFIX,
     });
   }, [address, score, submitScore]);
 

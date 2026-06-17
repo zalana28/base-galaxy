@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi';
-import { LEADERBOARD_ADDRESS } from '../config/wagmi.js';
+import { LEADERBOARD_ADDRESS, DATA_SUFFIX } from '../config/wagmi.js';
 import { base } from '../config/chain.js';
 import LEADERBOARD_ABI from '../abi/Leaderboard.json';
 
@@ -11,6 +11,7 @@ import LEADERBOARD_ABI from '../abi/Leaderboard.json';
  * 1. Show "Connect Wallet" buttons (Coinbase Smart Wallet / MetaMask)
  * 2. After connect: ensure Base chain
  * 3. Player clicks "Enter Game & Play" → sends enterGame() tx
+ *    (Builder Code suffix passed via dataSuffix for Base attribution)
  * 4. Wait for tx confirmation → callback onReady()
  */
 export default function WalletGate({ onReady, onViewLeaderboard }) {
@@ -19,7 +20,7 @@ export default function WalletGate({ onReady, onViewLeaderboard }) {
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
 
-  // enterGame tx
+  // enterGame tx via writeContract (dataSuffix = builder code appended to calldata)
   const {
     writeContract: enterGame,
     data: txHash,
@@ -61,6 +62,8 @@ export default function WalletGate({ onReady, onViewLeaderboard }) {
       abi: LEADERBOARD_ABI,
       functionName: 'enterGame',
       chainId: base.id,
+      // Append ERC-8021 builder code suffix so Base indexer attributes this tx
+      dataSuffix: DATA_SUFFIX,
     });
   }
 
