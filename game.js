@@ -23,22 +23,38 @@ ctx.imageSmoothingEnabled = false;
 const W = canvas.width;   // 360 (logical pixels)
 const H = canvas.height;  // 640
 
+// Viewport height that respects mobile browser chrome (address bar).
+function viewportH() {
+  return window.visualViewport ? window.visualViewport.height : window.innerHeight;
+}
+function viewportW() {
+  return window.visualViewport ? window.visualViewport.width : window.innerWidth;
+}
+
 function resize() {
   const ratio = W / H;
-  const winRatio = window.innerWidth / window.innerHeight;
+  const vw = viewportW();
+  const vh = viewportH();
+  const winRatio = vw / vh;
   let cw, ch;
   if (winRatio > ratio) {
-    ch = window.innerHeight;
+    ch = vh;
     cw = ch * ratio;
   } else {
-    cw = window.innerWidth;
+    cw = vw;
     ch = cw / ratio;
   }
-  canvas.style.width = cw + 'px';
-  canvas.style.height = ch + 'px';
+  canvas.style.width = Math.floor(cw) + 'px';
+  canvas.style.height = Math.floor(ch) + 'px';
 }
 window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', resize);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
 resize();
+
+// Prevent the page from scrolling/bouncing while playing (mobile browsers).
+window.addEventListener('touchmove', (e) => { e.preventDefault(); }, { passive: false });
+window.addEventListener('wheel', (e) => { e.preventDefault(); }, { passive: false });
 
 // -------- Input --------
 const keys = { left: false, right: false, fire: false };
@@ -46,7 +62,13 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
   if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
   if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') keys.fire = true;
-  if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') togglePause();
+  // Escape closes the Leaderboard modal first; otherwise toggles pause.
+  if (e.key === 'Escape') {
+    if (isLeaderboardOpen) { closeLeaderboard(); e.preventDefault(); return; }
+    togglePause();
+    return;
+  }
+  if (e.key === 'p' || e.key === 'P') togglePause();
 });
 window.addEventListener('keyup', (e) => {
   if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
@@ -301,7 +323,7 @@ function beep(freq = 440, dur = 0.08, type = 'square', vol = 0.08) {
     o.start();
     g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
     o.stop(audioCtx.currentTime + dur);
-  } catch (e) {}
+  } catch { /* audio may be unavailable (e.g. before user gesture) */ }
 }
 
 // -------- Game lifecycle --------
@@ -616,13 +638,76 @@ function loop() {
 }
 
 // -------- UI Overlays --------
-function show(id) {
-  document.querySelectorAll('.overlay').forEach(el => el.classList.remove('show'));
-  document.getElementById(id).classList.add('show');
+/*
+ * Modal state handling.
+ *
+ * Only ONE overlay is visible at a time, and visibility is controlled by the
+ * `.hidden` class (display:none !important). A closed overlay is fully removed
+ * from the document's interaction flow — it can NEVER block clicks, unlike the
+ * old opacity/pointer-events toggling which left invisible layers over the game.
+ *
+ * `activeOverlayId` tracks which screen is up so Escape/backdrop-click knows
+ * what to close, and `isLeaderboardOpen` is an explicit flag for the
+ * Leaderboard (Top Pilots) modal as required.
+ */
+const OVERLAYS = ['screenStart', 'screenPause', 'screenOver', 'screenLB'];
+let activeOverlayId = null;
+let isLeaderboardOpen = false;
+
+function showOverlay(id) {
+  OVERLAYS.forEach((oid) => {
+    const el = document.getElementById(oid);
+    if (!el) return;
+    if (oid === id) el.classList.remove('hidden');
+    else el.classList.add('hidden');
+  });
+  activeOverlayId = id;
+  isLeaderboardOpen = id === 'screenLB';
 }
+
+function hideOverlay(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('hidden');
+  if (activeOverlayId === id) activeOverlayId = null;
+  if (id === 'screenLB') isLeaderboardOpen = false;
+}
+
 function hideAllOverlays() {
-  document.querySelectorAll('.overlay').forEach(el => el.classList.remove('show'));
+  OVERLAYS.forEach((oid) => {
+    const el = document.getElementById(oid);
+    if (el) el.classList.add('hidden');
+  });
+  activeOverlayId = null;
+  isLeaderboardOpen = false;
 }
+
+// Backward-compatible alias used by older call sites.
+function show(id) { showOverlay(id); }
+
+// Close the Leaderboard modal and restore whatever screen was underneath it.
+// If we were mid-game-over, go back to the game-over screen; otherwise menu.
+function closeLeaderboard() {
+  hideOverlay('screenLB');
+  if (state === STATE.OVER) showOverlay('screenOver');
+  else if (state === STATE.PLAY || state === STATE.PAUSE) hideAllOverlays();
+  else showOverlay('screenStart');
+}
+
+// Backdrop click: clicking the dim area outside the panel closes the modal
+// (but clicks inside the panel are NOT forwarded, so buttons still work).
+function onOverlayBackdrop(e) {
+  // Only react when the click lands on the overlay itself, not its children.
+  if (e.target !== e.currentTarget) return;
+  if (activeOverlayId === 'screenLB') {
+    closeLeaderboard();
+  } else if (activeOverlayId === 'screenPause') {
+    togglePause();
+  }
+}
+
+document.querySelectorAll('.overlay').forEach((el) => {
+  el.addEventListener('click', onOverlayBackdrop);
+});
 
 // -------- Leaderboard (local + onchain stub) --------
 const LB_KEY = 'base_star_raider_lb_v1';
@@ -671,7 +756,7 @@ async function submitOnchain() {
     // Make sure we are on Base
     try {
       await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: BASE_CHAIN_ID }] });
-    } catch (e) { /* user may already be on Base */ }
+    } catch { /* user may already be on Base */ }
 
     const accounts = await provider.request({ method: 'eth_requestAccounts' });
     const from = accounts[0];
@@ -714,8 +799,8 @@ document.getElementById('btnStart').addEventListener('click', startPlay);
 document.getElementById('btnRestart').addEventListener('click', startPlay);
 document.getElementById('btnResume').addEventListener('click', togglePause);
 document.getElementById('btnQuit').addEventListener('click', () => { state = STATE.MENU; document.getElementById('hud').classList.add('hidden'); show('screenStart'); });
-document.getElementById('btnViewLB').addEventListener('click', () => { renderLB(); show('screenLB'); });
-document.getElementById('btnCloseLB').addEventListener('click', () => show('screenStart'));
+document.getElementById('btnViewLB').addEventListener('click', () => { renderLB(); showOverlay('screenLB'); });
+document.getElementById('btnCloseLB').addEventListener('click', closeLeaderboard);
 document.getElementById('btnSubmit').addEventListener('click', submitOnchain);
 document.getElementById('btnShare').addEventListener('click', shareScore);
 
