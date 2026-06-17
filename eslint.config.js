@@ -3,6 +3,10 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
+  // Global ignores (must be a standalone config object to apply globally).
+  {
+    ignores: ['node_modules/**', 'dist/**'],
+  },
   js.configs.recommended,
   {
     languageOptions: {
@@ -23,6 +27,5 @@ export default [
       // Underscore-prefixed unused vars are fine.
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
-    ignores: ['node_modules/**', 'dist/**'],
   },
 ];
