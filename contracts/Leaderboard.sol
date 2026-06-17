@@ -38,8 +38,9 @@ contract Leaderboard {
     /// @notice Record that a player has entered a game session.
     ///         No entry fee — player pays only gas.
     function enterGame() external {
-        lastEntered[msg.sender] = uint64(block.timestamp);
-        emit GameEntered(msg.sender, block.timestamp);
+        uint64 ts = uint64(block.timestamp);
+        lastEntered[msg.sender] = ts;
+        emit GameEntered(msg.sender, ts);
     }
 
     /// @notice Submit a score. Only updates the player's best if higher.
