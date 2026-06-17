@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#0b0420" />
+<meta name="base:app_id" content="6a3282fe154104d02cdb6141" />
+<title>Base Star Raider</title>
+
+<!-- Farcaster / Base Mini App embed metadata -->
+<meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://YOUR_DOMAIN/og.png","button":{"title":"Play Star Raider","action":{"type":"launch_miniapp","name":"Base Star Raider","url":"https://YOUR_DOMAIN/","splashImageUrl":"https://YOUR_DOMAIN/splash.png","splashBackgroundColor":"#0b0420"}}}' />
+<meta name="fc:frame" content='{"version":"1","imageUrl":"https://YOUR_DOMAIN/og.png","button":{"title":"Play Star Raider","action":{"type":"launch_frame","name":"Base Star Raider","url":"https://YOUR_DOMAIN/","splashImageUrl":"https://YOUR_DOMAIN/splash.png","splashBackgroundColor":"#0b0420"}}}' />
+
+<style>
+  :root {
+    --bg: #0b0420;
+    --bg2: #1a0a3a;
+    --accent: #00e0ff;
+    --accent2: #ff4fd8;
+    --warn: #ffd400;
+    --danger: #ff3860;
+    --text: #e6e6ff;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    height: 100%;
+    overscroll-behavior: none;
+    touch-action: none;
+    user-select: none;
+  }
+  #app {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, #1a0a3a 0%, #050010 80%);
+  }
+  canvas {
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    background: #050010;
+    display: block;
+    max-width: 100vw;
+    max-height: 100vh;
+    box-shadow: 0 0 40px rgba(0,224,255,0.25), inset 0 0 80px rgba(255,79,216,0.1);
+  }
+  .overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    padding: 24px;
+    pointer-events: none;
+  }
+  .overlay.show { pointer-events: auto; }
+  .panel {
+    background: rgba(11,4,32,0.92);
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 20px var(--accent), inset 0 0 20px rgba(0,224,255,0.15);
+    padding: 24px 28px;
+    max-width: 92vw;
+    width: 360px;
+  }
+  h1 {
+    font-family: 'Press Start 2P', 'Courier New', monospace;
+    font-size: 22px;
+    margin: 0 0 4px;
+    color: var(--accent);
+    text-shadow: 0 0 6px var(--accent), 2px 2px 0 var(--accent2);
+    letter-spacing: 1px;
+  }
+  h2 {
+    font-size: 14px; margin: 0 0 16px;
+    color: var(--accent2);
+    letter-spacing: 2px;
+  }
+  p { font-size: 12px; line-height: 1.6; margin: 8px 0; }
+  button {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    background: var(--bg2);
+    color: var(--accent);
+    border: 2px solid var(--accent);
+    padding: 10px 16px;
+    margin: 6px 4px;
+    cursor: pointer;
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all 0.15s;
+    min-width: 130px;
+  }
+  button:hover, button:active {
+    background: var(--accent);
+    color: var(--bg);
+    box-shadow: 0 0 16px var(--accent);
+  }
+  button.alt { color: var(--accent2); border-color: var(--accent2); }
+  button.alt:hover { background: var(--accent2); color: var(--bg); box-shadow: 0 0 16px var(--accent2); }
+  .hud {
+    position: absolute; top: 10px; left: 10px; right: 10px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    pointer-events: none;
+    font-size: 11px; letter-spacing: 1px;
+    text-shadow: 0 0 4px rgba(0,0,0,0.9);
+  }
+  .hud-block { background: rgba(0,0,0,0.35); padding: 6px 10px; border: 1px solid rgba(0,224,255,0.4); }
+  .hud .label { color: var(--accent2); font-size: 9px; display: block; }
+  .hud .val { color: var(--accent); font-size: 14px; font-weight: bold; }
+  .leaderboard {
+    list-style: none; padding: 0; margin: 8px 0 14px;
+    text-align: left; font-size: 11px;
+    max-height: 180px; overflow-y: auto;
+  }
+  .leaderboard li {
+    display: flex; justify-content: space-between;
+    padding: 4px 6px; border-bottom: 1px dashed rgba(0,224,255,0.2);
+  }
+  .leaderboard li.you { color: var(--warn); }
+  .rank { color: var(--accent2); }
+  .score { color: var(--accent); font-weight: bold; }
+  .small { font-size: 10px; opacity: 0.7; }
+  .hidden { display: none !important; }
+  .badge {
+    display: inline-block; padding: 2px 6px;
+    background: var(--accent2); color: var(--bg);
+    font-size: 9px; font-weight: bold;
+    margin-left: 6px;
+  }
+  /* Mobile touch controls */
+  .touch-ctrl {
+    position: absolute; bottom: 20px;
+    display: flex; gap: 12px;
+    pointer-events: auto;
+    opacity: 0.5;
+  }
+  .touch-ctrl.left { left: 20px; }
+  .touch-ctrl.right { right: 20px; }
+  .tbtn {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: rgba(0,224,255,0.15);
+    border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent); font-size: 22px; font-weight: bold;
+    user-select: none;
+  }
+  .tbtn:active { background: var(--accent); color: var(--bg); }
+  @media (hover: hover) { .touch-ctrl { display: none; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="game" width="360" height="640"></canvas>
+
+  <div class="hud hidden" id="hud">
+    <div class="hud-block">
+      <span class="label">SCORE</span>
+      <span class="val" id="hudScore">0</span>
+    </div>
+    <div class="hud-block" style="text-align:center">
+      <span class="label">WAVE</span>
+      <span class="val" id="hudWave">1</span>
+    </div>
+    <div class="hud-block" style="text-align:right">
+      <span class="label">LIVES</span>
+      <span class="val" id="hudLives">3</span>
+    </div>
+  </div>
+
+  <div class="touch-ctrl left hidden" id="touchLeft">
+    <div class="tbtn" id="btnLeft">◀</div>
+    <div class="tbtn" id="btnRight">▶</div>
+  </div>
+  <div class="touch-ctrl right hidden" id="touchRight">
+    <div class="tbtn" id="btnFire">●</div>
+  </div>
+
+  <!-- Start screen -->
+  <div class="overlay show" id="screenStart">
+    <div class="panel">
+      <h1>BASE STAR RAIDER</h1>
+      <h2>✦ RETRO ARCADE ✦</h2>
+      <p>Hancurkan armada alien, kumpulkan power-up, dan kibarkan skormu onchain di Base.</p>
+      <p class="small">Kontrol: ← → / A D untuk gerak • SPACE untuk tembak</p>
+      <button id="btnStart">▶ PLAY</button>
+      <button class="alt" id="btnViewLB">🏆 LEADERBOARD</button>
+    </div>
+  </div>
+
+  <!-- Pause -->
+  <div class="overlay" id="screenPause">
+    <div class="panel">
+      <h1>PAUSED</h1>
+      <button id="btnResume">RESUME</button>
+      <button class="alt" id="btnQuit">QUIT</button>
+    </div>
+  </div>
+
+  <!-- Game Over -->
+  <div class="overlay" id="screenOver">
+    <div class="panel">
+      <h1>GAME OVER</h1>
+      <h2 id="finalScoreLabel">SCORE: 0</h2>
+      <p id="submitStatus" class="small"></p>
+      <button id="btnSubmit">🔗 SUBMIT ONCHAIN</button>
+      <button class="alt" id="btnShare">📢 SHARE</button>
+      <button id="btnRestart">🔄 PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div class="overlay" id="screenLB">
+    <div class="panel">
+      <h1>LEADERBOARD</h1>
+      <h2>TOP PILOTS</h2>
+      <ol class="leaderboard" id="lbList"></ol>
+      <p class="small" id="lbSource">Local scores</p>
+      <button id="btnCloseLB">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./game.js"></script>
+</body>
+</html>
