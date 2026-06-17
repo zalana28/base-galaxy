@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
-import { useAccount, useConnect, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi';
+import { useAccount, useConnect, useDisconnect, useSendTransaction, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi';
+import { encodeFunctionData } from 'viem';
 import { LEADERBOARD_ADDRESS } from '../config/wagmi.js';
 import { base } from '../config/chain.js';
+import { BUILDER_CODE_SUFFIX } from '../lib/builderCode.js';
 import LEADERBOARD_ABI from '../abi/Leaderboard.json';
 
 /**
@@ -11,6 +13,7 @@ import LEADERBOARD_ABI from '../abi/Leaderboard.json';
  * 1. Show "Connect Wallet" buttons (Coinbase Smart Wallet / MetaMask)
  * 2. After connect: ensure Base chain
  * 3. Player clicks "Enter Game & Play" → sends enterGame() tx
+ *    (with Builder Code suffix attached for Base attribution)
  * 4. Wait for tx confirmation → callback onReady()
  */
 export default function WalletGate({ onReady, onViewLeaderboard }) {
@@ -19,14 +22,14 @@ export default function WalletGate({ onReady, onViewLeaderboard }) {
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
 
-  // enterGame tx
+  // enterGame tx via sendTransaction (so we can attach dataSuffix = builder code)
   const {
-    writeContract: enterGame,
+    sendTransaction: enterGame,
     data: txHash,
     isPending: isWriting,
     error: writeError,
     reset: resetWrite,
-  } = useWriteContract();
+  } = useSendTransaction();
 
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash: txHash,
@@ -56,10 +59,16 @@ export default function WalletGate({ onReady, onViewLeaderboard }) {
 
   function handleEnterGame() {
     resetWrite();
-    enterGame({
-      address: LEADERBOARD_ADDRESS,
+    // Encode enterGame() calldata, then append the Builder Code suffix so
+    // the Base indexer attributes this transaction to bc_kj0vqo00.
+    const data = encodeFunctionData({
       abi: LEADERBOARD_ABI,
       functionName: 'enterGame',
+    });
+    enterGame({
+      to: LEADERBOARD_ADDRESS,
+      data,
+      dataSuffix: BUILDER_CODE_SUFFIX,
       chainId: base.id,
     });
   }
