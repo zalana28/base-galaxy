@@ -6,8 +6,13 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Node
+node_modules/
+
+# Build output
+dist/
+
 # Logs / temp
 *.log
-node_modules/
 .env
 .env.*
