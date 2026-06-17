@@ -1,0 +1,97 @@
+[
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "name": "player", "type": "address" },
+      { "indexed": false, "name": "timestamp", "type": "uint64" }
+    ],
+    "name": "GameEntered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "name": "player", "type": "address" },
+      { "indexed": false, "name": "score", "type": "uint256" },
+      { "indexed": false, "name": "timestamp", "type": "uint64" },
+      { "indexed": false, "name": "newPersonalBest", "type": "bool" }
+    ],
+    "name": "ScoreSubmitted",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "enterGame",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "name": "score", "type": "uint256" }],
+    "name": "submitScore",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getRecent",
+    "outputs": [
+      {
+        "components": [
+          { "name": "player", "type": "address" },
+          { "name": "score", "type": "uint256" },
+          { "name": "timestamp", "type": "uint64" }
+        ],
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "name": "", "type": "address" }],
+    "name": "bestScore",
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "name": "", "type": "address" }],
+    "name": "lastEntered",
+    "outputs": [{ "name": "", "type": "uint64" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [{ "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "name": "", "type": "uint256" }],
+    "name": "recent",
+    "outputs": [
+      { "name": "player", "type": "address" },
+      { "name": "score", "type": "uint256" },
+      { "name": "timestamp", "type": "uint64" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "head",
+    "outputs": [{ "name": "", "type": "uint8" }],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
