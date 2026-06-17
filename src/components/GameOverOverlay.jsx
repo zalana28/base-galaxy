@@ -1,7 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
+import { useSendTransaction, useWaitForTransactionReceipt, useAccount } from 'wagmi';
+import { encodeFunctionData } from 'viem';
 import { LEADERBOARD_ADDRESS } from '../config/wagmi.js';
 import { base } from '../config/chain.js';
+import { BUILDER_CODE_SUFFIX } from '../lib/builderCode.js';
 import LEADERBOARD_ABI from '../abi/Leaderboard.json';
 import { useMiniApp } from '../hooks/useMiniApp.js';
 import { saveLocalScore } from '../lib/onchain.js';
@@ -14,13 +16,13 @@ export default function GameOverOverlay({ score = 0, wave = 1, onPlayAgain, onQu
   const { address } = useAccount();
   const { composeCast } = useMiniApp();
 
-  // Submit score onchain
+  // Submit score onchain via sendTransaction (so we can attach dataSuffix = builder code)
   const {
-    writeContract: submitScore,
+    sendTransaction: submitScore,
     data: txHash,
     isPending: isWriting,
     error: writeError,
-  } = useWriteContract();
+  } = useSendTransaction();
 
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash: txHash,
@@ -29,11 +31,17 @@ export default function GameOverOverlay({ score = 0, wave = 1, onPlayAgain, onQu
   const handleSubmit = useCallback(() => {
     if (!address) { setStatus('⚠ No wallet connected'); return; }
     setStatus('Submitting score...');
-    submitScore({
-      address: LEADERBOARD_ADDRESS,
+    // Encode submitScore(uint256) calldata, then append the Builder Code suffix
+    // so the Base indexer attributes this transaction to bc_kj0vqo00.
+    const data = encodeFunctionData({
       abi: LEADERBOARD_ABI,
       functionName: 'submitScore',
       args: [BigInt(score)],
+    });
+    submitScore({
+      to: LEADERBOARD_ADDRESS,
+      data,
+      dataSuffix: BUILDER_CODE_SUFFIX,
       chainId: base.id,
     });
   }, [address, score, submitScore]);
