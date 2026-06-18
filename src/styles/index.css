@@ -143,24 +143,41 @@ button.warn:hover { background: var(--warn); color: var(--bg); box-shadow: 0 0 1
 }
 /* Mobile touch controls */
 .touch-ctrl {
-  position: absolute; bottom: 20px;
+  position: absolute;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
   display: flex; gap: 12px;
   pointer-events: auto;
   opacity: 0.5;
   z-index: 10;
 }
-.touch-ctrl.left { left: 20px; }
-.touch-ctrl.right { right: 20px; }
+.touch-ctrl.left { left: 16px; }
+.touch-ctrl.right { right: 16px; }
 .tbtn {
-  width: 64px; height: 64px;
+  width: 60px; height: 60px;
   border-radius: 50%;
   background: rgba(0,224,255,0.15);
   border: 2px solid var(--accent);
   display: flex; align-items: center; justify-content: center;
-  color: var(--accent); font-size: 22px; font-weight: bold;
+  color: var(--accent); font-size: 20px; font-weight: bold;
   user-select: none;
 }
 .tbtn:active { background: var(--accent); color: var(--bg); }
+
+/* Landscape / very wide screens: stack controls in a row at bottom */
+@media (orientation: landscape) {
+  .touch-ctrl {
+    flex-direction: row;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    gap: 10px;
+  }
+  .touch-ctrl.left { left: auto; right: auto; position: static; }
+  .touch-ctrl.right { left: auto; right: auto; position: static; }
+  #touchLeft, #touchRight {
+    display: flex;
+    gap: 10px;
+  }
+}
+
 @media (hover: hover) { .touch-ctrl { display: none; } }
 
 /* Wallet-specific styles */
