@@ -2,7 +2,7 @@
   "name": "base-galaxy",
   "version": "2.0.0",
   "private": true,
-  "description": "Base Star Raider - Retro pixel-art space shooter for Base App / Farcaster Mini Apps",
+  "description": "Base Galaxy - Retro pixel-art space shooter for Base App / Farcaster Mini Apps",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,6 +15,7 @@
   "dependencies": {
     "@coinbase/onchainkit": "^0.38.0",
     "@tanstack/react-query": "^5.62.0",
+    "ox": "^0.14.29",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "viem": "^2.21.0",
