@@ -28,14 +28,18 @@ export default function GameCanvas({ playing, onScoreChange, onGameOver }) {
       },
     });
 
-    // Resize handler
+    // Resize handler — on touch devices, leave room at the bottom for controls.
     function resize() {
       const ratio = 360 / 640;
+      const isTouchDevice = 'ontouchstart' in window;
       const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
       const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-      const winRatio = vw / vh;
+      // On touch devices, reserve 96px at bottom for control buttons + safe area.
+      const controlSpace = isTouchDevice ? 96 : 0;
+      const effectiveVh = vh - controlSpace;
+      const winRatio = vw / effectiveVh;
       let cw, ch;
-      if (winRatio > ratio) { ch = vh; cw = ch * ratio; }
+      if (winRatio > ratio) { ch = effectiveVh; cw = ch * ratio; }
       else { cw = vw; ch = cw / ratio; }
       canvas.style.width = Math.floor(cw) + 'px';
       canvas.style.height = Math.floor(ch) + 'px';
