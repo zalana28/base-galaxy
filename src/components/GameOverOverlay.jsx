@@ -17,7 +17,7 @@ export default function GameOverOverlay({ score = 0, wave = 1, onPlayAgain, onQu
   const [status, setStatus] = useState('');
   const { composeCast } = useMiniApp();
 
-  const { send, status: txStatus } = useBuilderCodeTransaction({
+  const { send, status: txStatus, error } = useBuilderCodeTransaction({
     address: LEADERBOARD_ADDRESS,
     abi: LEADERBOARD_ABI,
     chainId: base.id,
@@ -31,10 +31,12 @@ export default function GameOverOverlay({ score = 0, wave = 1, onPlayAgain, onQu
 
   // React to tx states inside an effect to avoid setState-during-render warnings.
   useEffect(() => {
-    if (txStatus === 'error') setStatus('⚠ Transaction failed. Try again.');
-    else if (txStatus === 'success') setStatus('✅ Score submitted onchain!');
+    if (txStatus === 'error') {
+      const msg = error?.shortMessage || error?.message || 'Transaction failed. Try again.';
+      setStatus('⚠ ' + msg);
+    } else if (txStatus === 'success') setStatus('✅ Score submitted onchain!');
     else if (txStatus === 'pending') setStatus('⏳ Transaction pending...');
-  }, [txStatus]);
+  }, [txStatus, error]);
 
   // Save locally on mount
   useEffect(() => {
