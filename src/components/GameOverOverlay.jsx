@@ -9,9 +9,9 @@ import { saveLocalScore } from '../lib/onchain.js';
 /**
  * Game Over overlay — shows final score, submit onchain, share, and play again.
  *
- * Score submission goes through `useBuilderCodeTransaction` (ERC-5792
- * `wallet_sendCalls`) so the ERC-8021 builder code suffix is attached for both
- * the Smart Wallet (capability) and EOA (per-call dataSuffix) paths.
+ * Score submission uses `useBuilderCodeTransaction` (useWriteContract +
+ * per-call dataSuffix) so the ERC-8021 builder code suffix is appended to the
+ * calldata for any wallet (Smart Wallet, MetaMask, EOA).
  */
 export default function GameOverOverlay({ score = 0, wave = 1, onPlayAgain, onQuit }) {
   const [status, setStatus] = useState('');
@@ -35,6 +35,7 @@ export default function GameOverOverlay({ score = 0, wave = 1, onPlayAgain, onQu
       const msg = error?.shortMessage || error?.message || 'Transaction failed. Try again.';
       setStatus('⚠ ' + msg);
     } else if (txStatus === 'success') setStatus('✅ Score submitted onchain!');
+    else if (txStatus === 'confirming') setStatus('⏳ Waiting for confirmation...');
     else if (txStatus === 'pending') setStatus('⏳ Transaction pending...');
   }, [txStatus, error]);
 
@@ -59,7 +60,7 @@ export default function GameOverOverlay({ score = 0, wave = 1, onPlayAgain, onQu
         <h1>GAME OVER</h1>
         <h2>SCORE: {score}</h2>
         <p id="submitStatus" className="small">{status}</p>
-        <button onClick={handleSubmit} disabled={txStatus === 'pending'}>
+        <button onClick={handleSubmit} disabled={txStatus === 'pending' || txStatus === 'confirming'}>
           🔗 SUBMIT ONCHAIN
         </button>
         <button className="alt" onClick={handleShare}>📢 SHARE</button>
