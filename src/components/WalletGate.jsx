@@ -11,8 +11,8 @@ import { useBuilderCodeTransaction } from '../hooks/useBuilderCodeTransaction.js
  * Flow:
  * 1. Show "Connect Wallet" buttons (Coinbase Smart Wallet / MetaMask)
  * 2. After connect: ensure Base chain
- * 3. Player clicks "Enter Game & Play" → sends enterGame() tx via ERC-5792
- *    `wallet_sendCalls` with the ERC-8021 builder code suffix attached.
+ * 3. Player clicks "Enter Game & Play" → sends enterGame() tx with the
+ *    ERC-8021 builder code suffix appended to calldata.
  * 4. Wait for tx confirmation → callback onReady()
  */
 export default function WalletGate({ onReady, onViewLeaderboard }) {
@@ -21,13 +21,14 @@ export default function WalletGate({ onReady, onViewLeaderboard }) {
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
 
-  const { send, status, id } = useBuilderCodeTransaction({
+  const { send, status, hash, error } = useBuilderCodeTransaction({
     address: LEADERBOARD_ADDRESS,
     abi: LEADERBOARD_ABI,
     chainId: base.id,
   });
 
   const isPending = status === 'pending';
+  const isConfirming = status === 'confirming';
   const isSuccess = status === 'success';
   const isError = status === 'error';
 
@@ -97,7 +98,7 @@ export default function WalletGate({ onReady, onViewLeaderboard }) {
               Connected via {connector?.name}
             </p>
 
-            {!id && !isPending && !isError && (
+            {!hash && !isPending && !isConfirming && !isError && (
               <>
                 <p>Click below to enter the game. You&apos;ll pay a small gas fee on Base.</p>
                 <button className="warn" onClick={handleEnterGame}>
@@ -112,9 +113,15 @@ export default function WalletGate({ onReady, onViewLeaderboard }) {
             {isPending && (
               <div className="tx-status">
                 ⏳ Transaction pending... Confirm in your wallet.
-                {id && (
+              </div>
+            )}
+
+            {isConfirming && (
+              <div className="tx-status">
+                ⏳ Waiting for confirmation...
+                {hash && (
                   <p className="small">
-                    Call ID: <code>{String(id).slice(0, 18)}…</code>
+                    TX: <a href={`https://basescan.org/tx/${hash}`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>{hash.slice(0, 10)}...</a>
                   </p>
                 )}
               </div>
@@ -128,7 +135,7 @@ export default function WalletGate({ onReady, onViewLeaderboard }) {
 
             {isError && (
               <div className="tx-status" style={{ borderColor: 'var(--danger)' }}>
-                ⚠ Transaction failed. Try again.
+                ⚠ {error?.shortMessage || error?.message || 'Transaction failed. Try again.'}
                 <br />
                 <button className="alt" onClick={handleEnterGame} style={{ marginTop: 8, maxWidth: 200 }}>
                   RETRY
