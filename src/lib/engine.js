@@ -1,4 +1,4 @@
-// Base Star Raider — Game Engine
+// Base Galaxy — Game Engine
 // Extracted from game.js into a self-contained module.
 // Call `createEngine(canvas, callbacks)` to get an engine instance.
 

@@ -1,10 +1,9 @@
 import { useEffect } from 'react';
-import { useAccount, useConnect, useDisconnect, useSendTransaction, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi';
-import { encodeFunctionData } from 'viem';
+import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi';
 import { LEADERBOARD_ADDRESS } from '../config/wagmi.js';
 import { base } from '../config/chain.js';
-import { BUILDER_CODE_SUFFIX } from '../lib/builderCode.js';
 import LEADERBOARD_ABI from '../abi/Leaderboard.json';
+import { useBuilderCodeTransaction } from '../hooks/useBuilderCodeTransaction.js';
 
 /**
  * WalletGate — full-screen overlay shown BEFORE the player can start the game.
@@ -12,8 +11,8 @@ import LEADERBOARD_ABI from '../abi/Leaderboard.json';
  * Flow:
  * 1. Show "Connect Wallet" buttons (Coinbase Smart Wallet / MetaMask)
  * 2. After connect: ensure Base chain
- * 3. Player clicks "Enter Game & Play" → sends enterGame() tx
- *    (with Builder Code suffix attached for Base attribution)
+ * 3. Player clicks "Enter Game & Play" → sends enterGame() tx via ERC-5792
+ *    `wallet_sendCalls` with the ERC-8021 builder code suffix attached.
  * 4. Wait for tx confirmation → callback onReady()
  */
 export default function WalletGate({ onReady, onViewLeaderboard }) {
@@ -22,25 +21,20 @@ export default function WalletGate({ onReady, onViewLeaderboard }) {
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
 
-  // enterGame tx via sendTransaction (so we can attach dataSuffix = builder code)
-  const {
-    sendTransaction: enterGame,
-    data: txHash,
-    isPending: isWriting,
-    error: writeError,
-    reset: resetWrite,
-  } = useSendTransaction();
-
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
-    hash: txHash,
+  const { send, status, id } = useBuilderCodeTransaction({
+    address: LEADERBOARD_ADDRESS,
+    abi: LEADERBOARD_ABI,
+    chainId: base.id,
   });
 
-  // Once confirmed, unlock the game
+  const isPending = status === 'pending';
+  const isSuccess = status === 'success';
+  const isError = status === 'error';
+
+  // Once the call settles successfully, unlock the game.
   useEffect(() => {
-    if (isConfirmed) {
-      onReady();
-    }
-  }, [isConfirmed, onReady]);
+    if (isSuccess) onReady();
+  }, [isSuccess, onReady]);
 
   function handleConnect(connectorId) {
     const c = connectors.find((c) => c.id === connectorId);
@@ -58,25 +52,14 @@ export default function WalletGate({ onReady, onViewLeaderboard }) {
   }
 
   function handleEnterGame() {
-    resetWrite();
-    // Encode enterGame() calldata, then append the Builder Code suffix so
-    // the Base indexer attributes this transaction to bc_kj0vqo00.
-    const data = encodeFunctionData({
-      abi: LEADERBOARD_ABI,
-      functionName: 'enterGame',
-    });
-    enterGame({
-      to: LEADERBOARD_ADDRESS,
-      data,
-      dataSuffix: BUILDER_CODE_SUFFIX,
-      chainId: base.id,
-    });
+    // enterGame() — ERC-8021 builder code suffix attached via the hook
+    send('enterGame');
   }
 
   return (
     <div className="overlay">
       <div className="panel">
-        <h1>BASE STAR RAIDER</h1>
+        <h1>BASE GALAXY</h1>
         <h2>✦ CONNECT WALLET ✦</h2>
 
         {!isConnected ? (
@@ -114,7 +97,7 @@ export default function WalletGate({ onReady, onViewLeaderboard }) {
               Connected via {connector?.name}
             </p>
 
-            {!txHash && !isWriting && !isConfirming && (
+            {!id && !isPending && !isError && (
               <>
                 <p>Click below to enter the game. You&apos;ll pay a small gas fee on Base.</p>
                 <button className="warn" onClick={handleEnterGame}>
@@ -126,32 +109,26 @@ export default function WalletGate({ onReady, onViewLeaderboard }) {
               </>
             )}
 
-            {isWriting && (
+            {isPending && (
               <div className="tx-status">
                 ⏳ Transaction pending... Confirm in your wallet.
-              </div>
-            )}
-
-            {isConfirming && (
-              <div className="tx-status">
-                ⏳ Waiting for confirmation...
-                {txHash && (
+                {id && (
                   <p className="small">
-                    TX: <a href={`https://basescan.org/tx/${txHash}`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>{txHash.slice(0, 10)}...</a>
+                    Call ID: <code>{String(id).slice(0, 18)}…</code>
                   </p>
                 )}
               </div>
             )}
 
-            {isConfirmed && (
+            {isSuccess && (
               <div className="tx-status" style={{ borderColor: '#00ff7f' }}>
                 ✅ Game entry confirmed! Starting...
               </div>
             )}
 
-            {writeError && (
+            {isError && (
               <div className="tx-status" style={{ borderColor: 'var(--danger)' }}>
-                ⚠ {writeError.shortMessage || writeError.message}
+                ⚠ Transaction failed. Try again.
                 <br />
                 <button className="alt" onClick={handleEnterGame} style={{ marginTop: 8, maxWidth: 200 }}>
                   RETRY

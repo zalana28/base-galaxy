@@ -6,7 +6,7 @@
   },
   "miniapp": {
     "version": "1",
-    "name": "Base Star Raider",
+    "name": "Base Galaxy",
     "iconUrl": "https://YOUR_DOMAIN/icon.png",
     "homeUrl": "https://YOUR_DOMAIN/",
     "splashImageUrl": "https://YOUR_DOMAIN/splash.png",
@@ -17,10 +17,10 @@
     "tags": ["arcade", "shooter", "retro", "base", "onchain"],
     "heroImageUrl": "https://YOUR_DOMAIN/hero.png",
     "tagline": "Defend the Base.",
-    "ogTitle": "Base Star Raider",
+    "ogTitle": "Base Galaxy",
     "ogDescription": "Retro pixel-art space shooter with onchain leaderboard on Base.",
     "ogImageUrl": "https://YOUR_DOMAIN/og.png",
-    "buttonTitle": "Play Star Raider",
+    "buttonTitle": "Play Galaxy",
     "requiredChains": ["eip155:8453"],
     "requiredCapabilities": [
       "actions.ready",

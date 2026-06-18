@@ -1,4 +1,4 @@
-// ESLint flat config for Base Star Raider (React + Vite).
+// ESLint flat config for Base Galaxy (React + Vite).
 import js from '@eslint/js';
 import globals from 'globals';
 import reactPlugin from 'eslint-plugin-react';
