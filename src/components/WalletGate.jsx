@@ -21,7 +21,7 @@ export default function WalletGate({ onReady, onViewLeaderboard }) {
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
 
-  const { send, status, id } = useBuilderCodeTransaction({
+  const { send, status, id, error } = useBuilderCodeTransaction({
     address: LEADERBOARD_ADDRESS,
     abi: LEADERBOARD_ABI,
     chainId: base.id,
@@ -128,7 +128,7 @@ export default function WalletGate({ onReady, onViewLeaderboard }) {
 
             {isError && (
               <div className="tx-status" style={{ borderColor: 'var(--danger)' }}>
-                ⚠ Transaction failed. Try again.
+                ⚠ {error?.shortMessage || error?.message || 'Transaction failed. Try again.'}
                 <br />
                 <button className="alt" onClick={handleEnterGame} style={{ marginTop: 8, maxWidth: 200 }}>
                   RETRY

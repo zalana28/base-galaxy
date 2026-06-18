@@ -44,8 +44,12 @@ export function useBuilderCodeTransaction({ address, abi, chainId }) {
         const result = await sendCallsAsync({
           account,
           chainId,
-          // Per-call suffix — concatenated into calldata for the EOA path
-          // (and for wallets that ignore capabilities).
+          // If the wallet doesn't support `wallet_sendCalls` (ERC-5792),
+          // automatically fall back to `eth_sendTransaction` — which uses
+          // the per-call `dataSuffix` to append the builder code suffix.
+          experimental_fallback: true,
+          // Per-call suffix — concatenated into calldata for the EOA fallback
+          // path (and for wallets that ignore capabilities).
           calls: [
             {
               to,
