@@ -1,6 +1,8 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { createEngine } from '../lib/engine.js';
 
+const IS_TOUCH = typeof window !== 'undefined' && 'ontouchstart' in window;
+
 /**
  * GameCanvas — mounts the canvas and initializes the game engine.
  *
@@ -12,6 +14,9 @@ import { createEngine } from '../lib/engine.js';
 export default function GameCanvas({ playing, onScoreChange, onGameOver }) {
   const canvasRef = useRef(null);
   const engineRef = useRef(null);
+  const dpadRef = useRef(null);
+  const indicatorRef = useRef(null);
+  const fireBtnRef = useRef(null);
   const [, setHud] = useState({ score: 0, wave: 1, lives: 3 });
 
   // Create engine once
@@ -28,18 +33,16 @@ export default function GameCanvas({ playing, onScoreChange, onGameOver }) {
       },
     });
 
-    // Resize handler — on touch devices, leave room at the bottom for controls.
+    // Resize handler — canvas fills available space inside #game-wrap.
     function resize() {
       const ratio = 360 / 640;
-      const isTouchDevice = 'ontouchstart' in window;
-      const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
-      const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-      // On touch devices, reserve 96px at bottom for control buttons + safe area.
-      const controlSpace = isTouchDevice ? 96 : 0;
-      const effectiveVh = vh - controlSpace;
-      const winRatio = vw / effectiveVh;
+      const wrap = canvas.parentElement;
+      if (!wrap) return;
+      const vw = wrap.clientWidth;
+      const vh = wrap.clientHeight;
+      const winRatio = vw / vh;
       let cw, ch;
-      if (winRatio > ratio) { ch = effectiveVh; cw = ch * ratio; }
+      if (winRatio > ratio) { ch = vh; cw = ch * ratio; }
       else { cw = vw; ch = cw / ratio; }
       canvas.style.width = Math.floor(cw) + 'px';
       canvas.style.height = Math.floor(ch) + 'px';
@@ -82,12 +85,12 @@ export default function GameCanvas({ playing, onScoreChange, onGameOver }) {
     };
   }, []);
 
-  // Prevent page scrolling while playing (only block on canvas/touch-controls)
+  // Prevent page scrolling while playing (only block on canvas / dpad / fire)
   useEffect(() => {
     if (!playing) return;
     const preventScroll = (e) => {
       const t = e.target;
-      if (t?.tagName === 'CANVAS' || t?.closest?.('.touch-ctrl') || t?.closest?.('.tbtn')) {
+      if (t?.tagName === 'CANVAS' || t?.closest?.('#mobile-controls') || t?.closest?.('.dpad-zone') || t?.closest?.('.fire-btn')) {
         e.preventDefault();
       }
     };
@@ -99,36 +102,138 @@ export default function GameCanvas({ playing, onScoreChange, onGameOver }) {
     };
   }, [playing]);
 
-  // Touch control binding helpers
-  const bindTouch = useCallback((id, onDown, onUp) => {
-    const el = document.getElementById(id);
-    if (!el) return () => {};
-    const press = (e) => { e.preventDefault(); onDown(); };
-    const release = (e) => { e.preventDefault(); onUp(); };
-    el.addEventListener('touchstart', press, { passive: false });
-    el.addEventListener('touchend', release);
-    el.addEventListener('touchcancel', release);
-    el.addEventListener('mousedown', press);
-    el.addEventListener('mouseup', release);
-    el.addEventListener('mouseleave', release);
+  // Bind D-pad joystick (Bomberman-style touch zone)
+  const bindDpad = useCallback(() => {
+    const zone = dpadRef.current;
+    const indicator = indicatorRef.current;
+    if (!zone) return () => {};
+    const eng = engineRef.current;
+
+    function applyDir(touch) {
+      const rect = zone.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = touch.clientX - cx;
+      const dy = touch.clientY - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (indicator) {
+        indicator.style.display = 'block';
+        const ix = Math.min(Math.max(touch.clientX - rect.left, 14), rect.width - 14);
+        const iy = Math.min(Math.max(touch.clientY - rect.top, 14), rect.height - 14);
+        indicator.style.left = ix + 'px';
+        indicator.style.top = iy + 'px';
+      }
+
+      const deadzone = 16;
+      eng?.touchLeft(false);
+      eng?.touchRight(false);
+      // Up/down not used in this game — only left/right movement + fire
+
+      const leftArrow = document.getElementById('gc-da-left');
+      const rightArrow = document.getElementById('gc-da-right');
+      if (leftArrow) leftArrow.classList.remove('active');
+      if (rightArrow) rightArrow.classList.remove('active');
+
+      if (dist >= deadzone) {
+        const angle = Math.atan2(dy, dx);
+        if (angle > -Math.PI * 3/4 && angle <= -Math.PI * 1/4) {
+          // up - no-op for this game
+        } else if (angle > Math.PI * 1/4 && angle <= Math.PI * 3/4) {
+          // down - no-op for this game
+        } else if (angle > -Math.PI * 1/4 && angle <= Math.PI * 1/4) {
+          eng?.touchRight(true);
+          if (rightArrow) rightArrow.classList.add('active');
+        } else {
+          eng?.touchLeft(true);
+          if (leftArrow) leftArrow.classList.add('active');
+        }
+      }
+    }
+
+    function releaseDir() {
+      eng?.touchLeft(false);
+      eng?.touchRight(false);
+      if (indicator) indicator.style.display = 'none';
+      const leftArrow = document.getElementById('gc-da-left');
+      const rightArrow = document.getElementById('gc-da-right');
+      if (leftArrow) leftArrow.classList.remove('active');
+      if (rightArrow) rightArrow.classList.remove('active');
+    }
+
+    const onTouchStart = (e) => { e.preventDefault(); applyDir(e.touches[0]); };
+    const onTouchMove  = (e) => { e.preventDefault(); applyDir(e.touches[0]); };
+    const onTouchEnd   = (e) => { e.preventDefault(); releaseDir(); };
+    const onTouchCancel = (e) => { e.preventDefault(); releaseDir(); };
+
+    zone.addEventListener('touchstart', onTouchStart, { passive: false });
+    zone.addEventListener('touchmove', onTouchMove, { passive: false });
+    zone.addEventListener('touchend', onTouchEnd, { passive: false });
+    zone.addEventListener('touchcancel', onTouchCancel, { passive: false });
+
+    let mouseDown = false;
+    const onMouseDown = (e) => { mouseDown = true; applyDir(e); };
+    const onMouseMove = (e) => { if (mouseDown) applyDir(e); };
+    const onMouseUp = () => { mouseDown = false; releaseDir(); };
+    const onMouseLeave = () => { if (mouseDown) { mouseDown = false; releaseDir(); } };
+
+    zone.addEventListener('mousedown', onMouseDown);
+    zone.addEventListener('mousemove', onMouseMove);
+    zone.addEventListener('mouseup', onMouseUp);
+    zone.addEventListener('mouseleave', onMouseLeave);
+
     return () => {
-      el.removeEventListener('touchstart', press);
-      el.removeEventListener('touchend', release);
-      el.removeEventListener('touchcancel', release);
-      el.removeEventListener('mousedown', press);
-      el.removeEventListener('mouseup', release);
-      el.removeEventListener('mouseleave', release);
+      zone.removeEventListener('touchstart', onTouchStart);
+      zone.removeEventListener('touchmove', onTouchMove);
+      zone.removeEventListener('touchend', onTouchEnd);
+      zone.removeEventListener('touchcancel', onTouchCancel);
+      zone.removeEventListener('mousedown', onMouseDown);
+      zone.removeEventListener('mousemove', onMouseMove);
+      zone.removeEventListener('mouseup', onMouseUp);
+      zone.removeEventListener('mouseleave', onMouseLeave);
     };
   }, []);
 
-  // Bind touch controls
+  // Bind fire button
+  const bindFire = useCallback(() => {
+    const btn = fireBtnRef.current;
+    if (!btn) return () => {};
+    const eng = engineRef.current;
+
+    const press = (e) => {
+      e.preventDefault();
+      eng?.touchFire(true);
+      btn.classList.add('pressed');
+    };
+    const release = (e) => {
+      e.preventDefault();
+      eng?.touchFire(false);
+      btn.classList.remove('pressed');
+    };
+
+    btn.addEventListener('touchstart', press, { passive: false });
+    btn.addEventListener('touchend', release, { passive: false });
+    btn.addEventListener('touchcancel', release, { passive: false });
+    btn.addEventListener('mousedown', press);
+    btn.addEventListener('mouseup', release);
+    btn.addEventListener('mouseleave', release);
+    return () => {
+      btn.removeEventListener('touchstart', press);
+      btn.removeEventListener('touchend', release);
+      btn.removeEventListener('touchcancel', release);
+      btn.removeEventListener('mousedown', press);
+      btn.removeEventListener('mouseup', release);
+      btn.removeEventListener('mouseleave', release);
+    };
+  }, []);
+
+  // Hook up controls whenever playing
   useEffect(() => {
     if (!playing) return;
-    const unbindL = bindTouch('btnLeft', () => engineRef.current?.touchLeft(true), () => engineRef.current?.touchLeft(false));
-    const unbindR = bindTouch('btnRight', () => engineRef.current?.touchRight(true), () => engineRef.current?.touchRight(false));
-    const unbindF = bindTouch('btnFire', () => engineRef.current?.touchFire(true), () => engineRef.current?.touchFire(false));
-    return () => { unbindL(); unbindR(); unbindF(); };
-  }, [playing, bindTouch]);
+    const unbindD = bindDpad();
+    const unbindF = bindFire();
+    return () => { unbindD(); unbindF(); };
+  }, [playing, bindDpad, bindFire]);
 
   // Expose engine control for debugging via window
   useEffect(() => {
@@ -136,18 +241,32 @@ export default function GameCanvas({ playing, onScoreChange, onGameOver }) {
     return () => { delete window.__gameEngine; };
   }, []);
 
+  const showControls = playing && IS_TOUCH;
+
   return (
-    <>
+    <div id="game-wrap">
       <canvas ref={canvasRef} id="game" width={360} height={640} />
 
-      {/* Touch controls for mobile */}
-      <div className={`touch-ctrl left ${playing && ('ontouchstart' in window) ? '' : 'hidden'}`} id="touchLeft">
-        <div className="tbtn" id="btnLeft">◀</div>
-        <div className="tbtn" id="btnRight">▶</div>
+      {/* Mobile controls — placed BELOW canvas (Bomberman-style) */}
+      <div id="mobile-controls" className={showControls ? '' : 'hidden'}>
+        {/* Left: D-Pad joystick zone */}
+        <div className="dpad-zone" ref={dpadRef}>
+          <div className="dpad-h" />
+          <div className="dpad-v" />
+          <div className="dpad-center" />
+          <div className="dpad-arrow" id="gc-da-left">◀</div>
+          <div className="dpad-arrow" id="gc-da-right">▶</div>
+          <div className="dpad-indicator" ref={indicatorRef} />
+        </div>
+
+        <div className="ctrl-spacer" />
+
+        {/* Right: Fire button */}
+        <div className="fire-zone">
+          <button className="fire-btn" ref={fireBtnRef}>●</button>
+          <span className="fire-lbl">FIRE</span>
+        </div>
       </div>
-      <div className={`touch-ctrl right ${playing && ('ontouchstart' in window) ? '' : 'hidden'}`} id="touchRight">
-        <div className="tbtn" id="btnFire">●</div>
-      </div>
-    </>
+    </div>
   );
 }
