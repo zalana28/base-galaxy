@@ -17,7 +17,7 @@ export default function GameCanvas({ playing, onScoreChange, onGameOver }) {
   const dpadRef = useRef(null);
   const indicatorRef = useRef(null);
   const fireBtnRef = useRef(null);
-  const [, setHud] = useState({ score: 0, wave: 1, lives: 3 });
+  const [, setHud] = useState({ score: 0, wave: 1, lives: 1 });
 
   // Create engine once
   useEffect(() => {

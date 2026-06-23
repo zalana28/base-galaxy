@@ -16,7 +16,7 @@ import Leaderboard from './components/Leaderboard.jsx';
  */
 export default function App() {
   const [phase, setPhase] = useState('wallet'); // start at wallet gate
-  const [hud, setHud] = useState({ score: 0, wave: 1, lives: 3 });
+  const [hud, setHud] = useState({ score: 0, wave: 1, lives: 1 });
   const [finalScore, setFinalScore] = useState(0);
   const [finalWave, setFinalWave] = useState(1);
   const [showLB, setShowLB] = useState(false);
