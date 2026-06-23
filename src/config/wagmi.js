@@ -1,5 +1,5 @@
 import { http, createConfig, createStorage } from 'wagmi';
-import { coinbaseWallet } from 'wagmi/connectors';
+import { coinbaseWallet, injected } from 'wagmi/connectors';
 import { Attribution } from 'ox/erc8021';
 import { base } from './chain.js';
 
@@ -26,6 +26,10 @@ export const wagmiConfig = createConfig({
     coinbaseWallet({
       preference: 'smartWalletOnly',
       appName: 'Base Galaxy',
+    }),
+    // MetaMask / Browser wallets (EOA via injected provider)
+    injected({
+      target: 'metaMask',
     }),
   ],
   transports: {
