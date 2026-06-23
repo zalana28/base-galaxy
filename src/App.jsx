@@ -56,9 +56,9 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [phase, showLB]);
 
-  // Play again (from game over or wallet screen)
+  // Play again (from game over) — must re-enter game (pay gas) like first time
   const handlePlayAgain = useCallback(() => {
-    setPhase('playing');
+    setPhase('wallet');
   }, []);
 
   // Quit to wallet gate
