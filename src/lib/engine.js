@@ -70,7 +70,7 @@ export function createEngine(canvas, cb = {}) {
   let stars = [];
   let score = 0;
   let wave = 1;
-  let lives = 3;
+  let lives = 1;
   let waveTimer = 0;
   let spawnCooldown = 0;
   let enemiesToSpawn = 0;
@@ -439,7 +439,7 @@ export function createEngine(canvas, cb = {}) {
     particles = [];
     powerups = [];
     score = 0;
-    lives = 3;
+    lives = 1;
     wave = 0;
     notifyHUD();
     startWave(1);
