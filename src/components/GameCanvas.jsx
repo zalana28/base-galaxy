@@ -82,16 +82,22 @@ export default function GameCanvas({ playing, onScoreChange, onGameOver }) {
     };
   }, []);
 
-  // Prevent page scrolling while playing
+  // Prevent page scrolling while playing (only block on canvas/touch-controls)
   useEffect(() => {
-    const preventScroll = (e) => e.preventDefault();
+    if (!playing) return;
+    const preventScroll = (e) => {
+      const t = e.target;
+      if (t?.tagName === 'CANVAS' || t?.closest?.('.touch-ctrl') || t?.closest?.('.tbtn')) {
+        e.preventDefault();
+      }
+    };
     window.addEventListener('touchmove', preventScroll, { passive: false });
     window.addEventListener('wheel', preventScroll, { passive: false });
     return () => {
       window.removeEventListener('touchmove', preventScroll);
       window.removeEventListener('wheel', preventScroll);
     };
-  }, []);
+  }, [playing]);
 
   // Touch control binding helpers
   const bindTouch = useCallback((id, onDown, onUp) => {

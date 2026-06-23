@@ -163,18 +163,18 @@ button.warn:hover { background: var(--warn); color: var(--bg); box-shadow: 0 0 1
 }
 .tbtn:active { background: var(--accent); color: var(--bg); }
 
-/* Landscape / very wide screens: stack controls in a row at bottom */
+/* Landscape / very wide screens: keep controls at bottom corners */
 @media (orientation: landscape) {
   .touch-ctrl {
     flex-direction: row;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
     gap: 10px;
   }
-  .touch-ctrl.left { left: auto; right: auto; position: static; }
-  .touch-ctrl.right { left: auto; right: auto; position: static; }
-  #touchLeft, #touchRight {
-    display: flex;
-    gap: 10px;
+  .touch-ctrl.left { left: 12px; }
+  .touch-ctrl.right { right: 12px; }
+  .tbtn {
+    width: 52px; height: 52px;
+    font-size: 18px;
   }
 }
 

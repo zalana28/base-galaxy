@@ -20,7 +20,7 @@ export function useMiniApp() {
 
     (async () => {
       try {
-        const mod = await import('https://esm.sh/@farcaster/miniapp-sdk@latest');
+        const mod = await import('@farcaster/miniapp-sdk');
         const miniAppSdk = mod.sdk;
         const ctx = await miniAppSdk.context;
 

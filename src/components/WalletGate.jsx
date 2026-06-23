@@ -17,9 +17,9 @@ import { useBuilderCodeTransaction } from '../hooks/useBuilderCodeTransaction.js
  */
 export default function WalletGate({ onReady, onViewLeaderboard }) {
   const { address, isConnected, connector } = useAccount();
-  const { connect, connectors, isPending: isConnecting } = useConnect();
+  const { connectAsync, connectors, isPending: isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
-  const { switchChain } = useSwitchChain();
+  const { switchChainAsync } = useSwitchChain();
 
   const { send, status, hash, error } = useBuilderCodeTransaction({
     address: LEADERBOARD_ADDRESS,
@@ -37,18 +37,15 @@ export default function WalletGate({ onReady, onViewLeaderboard }) {
     if (isSuccess) onReady();
   }, [isSuccess, onReady]);
 
-  function handleConnect(connectorId) {
+  async function handleConnect(connectorId) {
     const c = connectors.find((c) => c.id === connectorId);
-    if (c) {
-      connect(
-        { connector: c },
-        {
-          onSuccess: () => {
-            // After connect, switch to Base
-            try { switchChain({ chainId: base.id }); } catch { /* may already be on Base */ }
-          },
-        },
-      );
+    if (!c) return;
+    try {
+      await connectAsync({ connector: c });
+      // After connect, switch to Base
+      try { await switchChainAsync({ chainId: base.id }); } catch { /* may already be on Base */ }
+    } catch {
+      // Connection cancelled or failed
     }
   }
 
